@@ -40,6 +40,13 @@ BEGIN
         RAISE EXCEPTION 'Arquero con id % no existe.', p_archer_id;
     END IF;
 
+    IF NOT EXISTS (
+        SELECT 1 FROM inscriptions 
+        WHERE id_archer = p_archer_id AND id_tournament = p_tournament_id
+    ) THEN
+        RAISE EXCEPTION 'El arquero % no está inscrito en el torneo %.', p_archer_id, p_tournament_id;
+    END IF;
+
     -- 3. Check if the round already exists for the tournament, archer and round number; if not, create
     SELECT id_round INTO v_round_id 
     FROM rounds 
@@ -225,3 +232,43 @@ BEGIN
     RAISE NOTICE 'mv_leaderboard_historico refrescada a las %', NOW();
 END;
 $$;
+
+-- ============================================================
+-- 7. TRIGGER 3: Validate archer category matches tournament category
+-- ============================================================
+CREATE OR REPLACE FUNCTION fn_validar_categoria_inscripcion()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_archer_category BIGINT;
+    v_tournament_category BIGINT;
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        SELECT id_category INTO v_archer_category FROM archers WHERE id_archer = NEW.id_archer;
+        SELECT id_category INTO v_tournament_category FROM tournaments WHERE id_tournament = NEW.id_tournament;
+
+        IF v_archer_category IS DISTINCT FROM v_tournament_category THEN
+            RAISE EXCEPTION 'El arquero % (categoría %) no puede inscribirse en un torneo de categoría %.',
+                NEW.id_archer, v_archer_category, v_tournament_category;
+        END IF;
+
+        NEW.id_category := v_archer_category;  -- congelar
+
+    ELSIF TG_OP = 'UPDATE' THEN
+        -- Ya inscrito en ESE torneo: la categoría de la inscripción no puede cambiar.
+        IF OLD.id_category IS DISTINCT FROM NEW.id_category THEN
+            RAISE EXCEPTION 'No se puede cambiar la categoría de una inscripción ya registrada (torneo %).',
+                NEW.id_tournament;
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_validar_categoria_inscripcion ON inscriptions;
+CREATE TRIGGER trg_validar_categoria_inscripcion
+BEFORE INSERT OR UPDATE ON inscriptions
+FOR EACH ROW
+EXECUTE FUNCTION fn_validar_categoria_inscripcion();

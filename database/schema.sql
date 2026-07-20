@@ -10,6 +10,7 @@ CREATE TABLE users (
     email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     rol VARCHAR(50) NOT NULL CHECK (rol IN ('ARQUERO', 'ADMIN'))
+    CONSTRAINT chk_email_format CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
 );
 
 CREATE TABLE archers (
@@ -29,6 +30,7 @@ CREATE TABLE tournaments (
     end_date DATE NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     CONSTRAINT fk_tournament_category FOREIGN KEY (id_category) REFERENCES categories(id_category) ON DELETE RESTRICT
+    CONSTRAINT chk_tournament_dates CHECK (end_date >= start_date)
 );
 
 CREATE TABLE inscriptions (
@@ -38,6 +40,7 @@ CREATE TABLE inscriptions (
     score INT DEFAULT 0,
     CONSTRAINT fk_inscription_archer FOREIGN KEY (id_archer) REFERENCES archers(id_archer) ON DELETE CASCADE,
     CONSTRAINT fk_inscription_tournament FOREIGN KEY (id_tournament) REFERENCES tournaments(id_tournament) ON DELETE CASCADE,
+    CONSTRAINT fk_inscription_category FOREIGN KEY (id_category) REFERENCES categories(id_category),
     CONSTRAINT uq_archer_tournament UNIQUE(id_archer, id_tournament)
 );
 
