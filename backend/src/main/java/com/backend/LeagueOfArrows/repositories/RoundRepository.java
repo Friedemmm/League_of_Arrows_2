@@ -1,5 +1,6 @@
 package com.backend.LeagueOfArrows.repositories;
 
+import com.backend.LeagueOfArrows.dtos.DistanceCheckDTO;
 import com.backend.LeagueOfArrows.dtos.RoundDetailDTO;
 import com.backend.LeagueOfArrows.dtos.RoundRequestDTO;
 import lombok.RequiredArgsConstructor;
@@ -85,8 +86,37 @@ public class RoundRepository {
         return jdbc.update("DELETE FROM rounds WHERE id_round = ?", roundId);
     }
 
-    // Delete a single arrow 
+    // Delete a single arrow
     public int deleteArrow(Long roundId, Long arrowId) {
         return jdbc.update("DELETE FROM arrows WHERE id_arrow = ? AND id_round = ?", arrowId, roundId);
+    }
+
+    // ── Register/update archer GPS position for a round ───────────────
+    //    Triggers zona de competencia, geocerca and safety-distance checks.
+    @Transactional
+    public int updateArcherPosition(Long roundId, Double lon, Double lat, Long targetId, Long adminUserId) {
+        if (adminUserId != null) {
+            jdbc.execute("SET LOCAL app.current_user_id = " + adminUserId);
+        }
+        return jdbc.update("""
+            UPDATE rounds
+            SET archer_location = ST_SetSRID(ST_MakePoint(?, ?), 4326),
+                id_target = COALESCE(?, id_target)
+            WHERE id_round = ?
+        """, lon, lat, targetId, roundId);
+    }
+
+    // ── Real vs. normative distance for a round's assigned target ────
+    public Optional<DistanceCheckDTO> checkDistanceNormativa(Long roundId) {
+        List<DistanceCheckDTO> result = jdbc.query(
+                "SELECT * FROM fn_verificar_distancia_normativa(?)",
+                (rs, rn) -> new DistanceCheckDTO(
+                        rs.getBigDecimal("distancia_real_m"),
+                        rs.getBigDecimal("distancia_normativa_m"),
+                        rs.getBoolean("cumple_normativa")
+                ),
+                roundId
+        );
+        return result.stream().findFirst();
     }
 }
