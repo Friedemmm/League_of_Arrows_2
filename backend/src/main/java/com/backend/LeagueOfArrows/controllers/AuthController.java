@@ -10,6 +10,8 @@ import com.backend.LeagueOfArrows.services.ArcherService;
 import com.backend.LeagueOfArrows.services.JwtService;
 import lombok.RequiredArgsConstructor;
 import java.util.Map;
+import java.util.regex.Pattern;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +20,10 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
+
+    // Mismo patrón que el CHECK chk_email_format en la base de datos
+    private static final Pattern EMAIL_PATTERN =
+            Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
 
     private final UserRepository userRepository;
     private final ArcherService archerService;
@@ -52,13 +58,23 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("error", "Nombre, email y contraseña son obligatorios"));
         }
 
+        // Formato de email válido (usuario@dominio.com)
+        if (!EMAIL_PATTERN.matcher(request.getEmail()).matches()){
+            return ResponseEntity.badRequest().body(Map.of("error", "El correo debe tener un formato válido, ej: usuario@dominio.com"));
+        }
+
         // Email debe ser unico
         if (userRepository.findByEmail(request.getEmail()).isPresent()){
             return ResponseEntity.status(409).body(Map.of("error", "El email ya está registrado"));
         }
 
-        // Crear el arquero (rol ARQUERO forzado dentro del servicio)
-        ArcherEntity archer = archerService.save(request);
+        // Crear el arquero
+        ArcherEntity archer;
+        try {
+            archer = archerService.save(request);
+        } catch (DataAccessException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "No se pudo registrar el usuario. Verifica que los datos sean válidos."));
+        }
 
         // Generar token para dejar al arquero logueado inmediatamente
         String token = jwtService.generateToken(request.getEmail(), "ARQUERO", archer.getUserId());

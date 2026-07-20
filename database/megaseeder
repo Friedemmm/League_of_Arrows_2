@@ -49,11 +49,17 @@ INSERT INTO inscriptions (id_archer, id_tournament, score) VALUES
 (3, 1, 54);
 
 INSERT INTO inscriptions (id_archer, id_tournament)
-SELECT id_archer, 3 FROM archers WHERE id_archer <= 50;
+SELECT a.id_archer, 3
+FROM archers a JOIN tournaments t ON t.id_tournament = 3
+WHERE a.id_archer <= 50 AND a.id_category = t.id_category;
 INSERT INTO inscriptions (id_archer, id_tournament)
-SELECT id_archer, 4 FROM archers WHERE id_archer > 50;
+SELECT a.id_archer, 4
+FROM archers a JOIN tournaments t ON t.id_tournament = 4
+WHERE a.id_archer > 50 AND a.id_category = t.id_category;
 INSERT INTO inscriptions (id_archer, id_tournament)
-SELECT id_archer, 5 FROM archers;
+SELECT a.id_archer, 5
+FROM archers a JOIN tournaments t ON t.id_tournament = 5
+WHERE a.id_category = t.id_category;
 
 INSERT INTO rounds (id_tournament, id_archer, round_number) VALUES 
 (1, 1, 1),

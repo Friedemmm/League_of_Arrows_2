@@ -37,6 +37,7 @@ CREATE TABLE inscriptions (
     id_inscription BIGSERIAL PRIMARY KEY,
     id_archer BIGINT NOT NULL,
     id_tournament BIGINT NOT NULL,
+    id_category BIGINT,
     score INT DEFAULT 0,
     CONSTRAINT fk_inscription_archer FOREIGN KEY (id_archer) REFERENCES archers(id_archer) ON DELETE CASCADE,
     CONSTRAINT fk_inscription_tournament FOREIGN KEY (id_tournament) REFERENCES tournaments(id_tournament) ON DELETE CASCADE,
