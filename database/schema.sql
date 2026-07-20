@@ -29,7 +29,7 @@ CREATE TABLE tournaments (
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
-    CONSTRAINT fk_tournament_category FOREIGN KEY (id_category) REFERENCES categories(id_category) ON DELETE RESTRICT
+    CONSTRAINT fk_tournament_category FOREIGN KEY (id_category) REFERENCES categories(id_category) ON DELETE RESTRICT,
     CONSTRAINT chk_tournament_dates CHECK (end_date >= start_date)
 );
 
