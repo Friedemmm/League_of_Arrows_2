@@ -1,9 +1,9 @@
 package com.backend.LeagueOfArrows.controllers;
 
+import com.backend.LeagueOfArrows.repositories.CategoriesRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,15 +14,12 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CategoriesController {
 
-    private final JdbcTemplate jdbc;
+    private final CategoriesRepository categoriesRepository;
 
     // listar categorias (publico)
     @GetMapping
     public ResponseEntity<List<Map<String, Object>>> getAll() {
-        List<Map<String, Object>> cats = jdbc.queryForList(
-            "SELECT id_category, name FROM categories ORDER BY name"
-        );
-        return ResponseEntity.ok(cats);
+        return ResponseEntity.ok(categoriesRepository.findAll());
     }
 
     // Crear categoria (admin)
@@ -33,10 +30,7 @@ public class CategoriesController {
             return ResponseEntity.badRequest().body(Map.of("error", "El nombre es obligatorio"));
         }
         try {
-            Long id = jdbc.queryForObject(
-                "INSERT INTO categories (name) VALUES (?) RETURNING id_category",
-                Long.class, name.trim()
-            );
+            Long id = categoriesRepository.save(name.trim());
             return ResponseEntity.status(201).body(Map.of("id_category", id, "name", name.trim()));
         } catch (DataIntegrityViolationException e) {
             return ResponseEntity.status(409).body(Map.of("error", "Ya existe una categoría con ese nombre"));
@@ -51,7 +45,7 @@ public class CategoriesController {
             return ResponseEntity.badRequest().body(Map.of("error", "El nombre es obligatorio"));
         }
         try {
-            int rows = jdbc.update("UPDATE categories SET name = ? WHERE id_category = ?", name.trim(), id);
+            int rows = categoriesRepository.update(id, name.trim());
             if (rows == 0) {
                 return ResponseEntity.status(404).body(Map.of("error", "Categoría no encontrada"));
             }
@@ -65,7 +59,7 @@ public class CategoriesController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id) {
         try {
-            int rows = jdbc.update("DELETE FROM categories WHERE id_category = ?", id);
+            int rows = categoriesRepository.deleteById(id);
             if (rows == 0) {
                 return ResponseEntity.status(404).body(Map.of("error", "Categoría no encontrada"));
             }
