@@ -2,10 +2,10 @@
   <!-- No background image — the global aurora from App.vue is the background -->
   <div class="login-page">
 
-    <!-- Login card — same panel aesthetic as Home sections -->
+    <!-- Register card — same panel aesthetic as Login -->
     <div class="login-card">
 
-      <!-- ── Section header (mirrors "TOP ARQUEROS" / "EVENTOS" style) ── -->
+      <!-- ── Section header ── -->
       <div class="section-header login-header">
         <div class="card-crest" aria-hidden="true">
           <svg width="38" height="38" viewBox="0 0 32 32" fill="none">
@@ -17,28 +17,41 @@
           </svg>
         </div>
 
-        <h1 class="section-title login-title">League of Arrows</h1>
+        <h1 class="section-title login-title">Crear cuenta</h1>
 
         <div class="section-meta-row login-meta">
-          <p class="section-subtitle">Accede a tus torneos y rankings</p>
+          <p class="section-subtitle">Regístrate y compite</p>
         </div>
         <hr class="header-rule" />
       </div>
 
       <!-- ── Error alert ── -->
       <Transition name="slide-up">
-        <div class="login-alert" v-if="error" id="login-error" role="alert">
+        <div class="login-alert" v-if="error" id="register-error" role="alert">
           ⚠ {{ error }}
         </div>
       </Transition>
 
-      <!-- ── Login form ── -->
-      <form @submit.prevent="handleLogin" id="login-form" novalidate>
+      <!-- ── Register form ── -->
+      <form @submit.prevent="handleRegister" id="register-form" novalidate>
 
         <div class="field-group">
-          <label class="field-label" for="login-email">Email</label>
+          <label class="field-label" for="register-name">Nombre</label>
           <input
-            id="login-email"
+            id="register-name"
+            class="field-input"
+            type="text"
+            v-model="name"
+            placeholder="Tu nombre"
+            required
+            autocomplete="name"
+          />
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="register-email">Email</label>
+          <input
+            id="register-email"
             class="field-input"
             type="email"
             v-model="email"
@@ -49,38 +62,50 @@
         </div>
 
         <div class="field-group">
-          <label class="field-label" for="login-password">Contraseña</label>
+          <label class="field-label" for="register-password">Contraseña</label>
           <input
-            id="login-password"
+            id="register-password"
             class="field-input"
             type="password"
             v-model="password"
             placeholder="••••••••"
             required
-            autocomplete="current-password"
+            autocomplete="new-password"
           />
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="register-category">Categoría (opcional)</label>
+          <select
+            id="register-category"
+            class="field-input"
+            v-model="categoryId"
+          >
+            <option :value="null">Sin categoría</option>
+            <option v-for="c in categories" :key="c.id_category" :value="c.id_category">
+              {{ c.name }}
+            </option>
+          </select>
         </div>
 
         <button
           type="submit"
-          id="btn-login"
+          id="btn-register"
           class="btn-primary"
           :disabled="loading"
         >
           <span v-if="loading" class="btn-spinner">⟳</span>
-          <span>{{ loading ? 'Ingresando...' : 'Ingresar' }}</span>
+          <span>{{ loading ? 'Creando cuenta...' : 'Registrarme' }}</span>
         </button>
 
       </form>
 
-            <!-- ── Register link ── -->
+      <!-- ── Links ── -->
       <div class="back-row">
-        <RouterLink to="/register" class="back-link" id="link-to-register">
-          ¿No tienes cuenta? Regístrate aquí 
+        <RouterLink to="/login" class="back-link" id="link-to-login">
+          ¿Ya tienes cuenta? Inicia sesión
         </RouterLink>
       </div>
-
-      <!-- ── Back to home ── -->
       <div class="back-row">
         <RouterLink to="/" class="back-link" id="link-back-home">
           ← Volver al inicio
@@ -92,41 +117,54 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
+import api from '../api/axios.js'
 
 const router = useRouter()
 const auth   = useAuthStore()
 
-const email    = ref('')
-const password = ref('')
-const loading  = ref(false)
-const error    = ref('')
+const name       = ref('')
+const email      = ref('')
+const password   = ref('')
+const categoryId = ref(null)
+const categories = ref([])
+const loading    = ref(false)
+const error      = ref('')
 
-// ── Dev test accounts (quick-fill) ───────────────────────────────────
-const TEST_ACCOUNTS = {
-  admin:  { email: 'admin@leagueofarrows.com', password: 'admin123' },
-  archer: { email: 'ashe@gmail.com',           password: 'admin123' },
-}
+// ── Load categories for the selector (public endpoint) ────────────────
+onMounted(async () => {
+  try {
+    const res = await api.get('/categories')
+    categories.value = res.data
+  } catch (e) {
+    // Non-blocking: registrar sin categoría sigue siendo válido
+    categories.value = []
+  }
+})
 
-function autofill(role) {
-  const creds    = TEST_ACCOUNTS[role]
-  email.value    = creds.email
-  password.value = creds.password
-  error.value    = ''
-}
+// ── Register handler ─────────────────────────────────────────────────
+async function handleRegister() {
+  error.value = ''
 
-// ── Login handler ────────────────────────────────────────────────────
-async function handleLogin() {
-  error.value   = ''
+  if (!name.value.trim() || !email.value.trim() || !password.value) {
+    error.value = 'Completa nombre, email y contraseña.'
+    return
+  }
+
   loading.value = true
   try {
-    const user = await auth.login(email.value, password.value)
-    // Always redirect to dashboard — it handles role-aware content
+    await auth.register({
+      name: name.value.trim(),
+      email: email.value.trim(),
+      password: password.value,
+      categoryId: categoryId.value,
+    })
+    // Registro exitoso → sesión iniciada, ir al dashboard
     router.push('/dashboard')
   } catch (e) {
-    error.value = e.response?.data?.error || 'Credenciales inválidas. Intenta de nuevo.'
+    error.value = e.response?.data?.error || 'No se pudo crear la cuenta. Intenta de nuevo.'
   } finally {
     loading.value = false
   }
@@ -147,7 +185,7 @@ async function handleLogin() {
   box-sizing: border-box;
 }
 
-/* ── Login card — identical panel style to Eventos / Top Arqueros ── */
+/* ── Register card — identical panel style to Login ── */
 .login-card {
   width: 100%;
   max-width: 440px;
@@ -158,7 +196,6 @@ async function handleLogin() {
     0 0 60px rgba(0, 0, 0, 0.6),
     0 0 20px rgba(200, 155, 60, 0.06),
     inset 0 0 40px rgba(200, 155, 60, 0.02);
-  /* Top gold accent line — same as Home section panels */
   position: relative;
 }
 
@@ -182,14 +219,12 @@ async function handleLogin() {
   margin-bottom: 0.4rem;
 }
 
-/* Scale down the global section-title inside the card */
 .login-title {
   font-size: 1.5rem !important;
   letter-spacing: 0.08em !important;
   margin-bottom: 0;
 }
 
-/* Centre the subtitle in the card (global rule uses space-between) */
 .login-meta {
   justify-content: center !important;
   width: 100%;
@@ -287,58 +322,7 @@ async function handleLogin() {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── Dev quick-fill ─────────────────────────────────────────────── */
-.dev-section {
-  margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border-subtle);
-}
-
-.dev-label {
-  font-family: 'Inter', sans-serif;
-  font-size: 0.54rem;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--text-muted);
-  text-align: center;
-  margin-bottom: 0.6rem;
-}
-
-.dev-buttons {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.dev-btn {
-  flex: 1;
-  padding: 0.48rem 0.5rem;
-  font-family: 'Inter', sans-serif;
-  font-size: 0.7rem;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid var(--border-subtle);
-  background: rgba(4, 10, 20, 0.8);
-  color: var(--text-body);
-  transition: border-color var(--t), color var(--t), box-shadow var(--t);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3rem;
-}
-
-.dev-btn--admin:hover {
-  border-color: var(--gold-rich);
-  color: var(--gold-pale);
-  box-shadow: 0 0 10px rgba(200, 155, 60, 0.18);
-}
-
-.dev-btn--archer:hover {
-  border-color: var(--cyan);
-  color: var(--cyan);
-  box-shadow: 0 0 10px rgba(11, 196, 227, 0.18);
-}
-
-/* ── Back to home ───────────────────────────────────────────────── */
+/* ── Links ───────────────────────────────────────────────────────── */
 .back-row {
   display: flex;
   justify-content: center;
@@ -357,7 +341,6 @@ async function handleLogin() {
 
 /* ── Responsive ─────────────────────────────────────────────────── */
 @media (max-width: 480px) {
-  .login-card    { padding: 1.6rem 1.2rem 1.4rem; }
-  .dev-buttons   { flex-direction: column; }
+  .login-card { padding: 1.6rem 1.2rem 1.4rem; }
 }
 </style>

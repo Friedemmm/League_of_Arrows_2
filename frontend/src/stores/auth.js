@@ -20,6 +20,16 @@ export const useAuthStore = defineStore('auth', () => {
     return user.value
   }
 
+  async function register({ name, email, password, categoryId }) {
+    const res = await api.post('/auth/register', { name, email, password, categoryId })
+    const { token: jwt, rol, userId } = res.data
+    token.value = jwt
+    user.value  = { email, role: rol, userId }
+    localStorage.setItem('loa_token', jwt)
+    localStorage.setItem('loa_user', JSON.stringify(user.value))
+    return user.value
+  }
+
   function logout() {
     token.value = null
     user.value  = null
@@ -27,5 +37,5 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('loa_user')
   }
 
-  return { token, user, isLoggedIn, isAdmin, isArcher, login, logout }
+  return { token, user, isLoggedIn, isAdmin, isArcher, login, register, logout }
 })

@@ -10,6 +10,13 @@ const routes = [
     meta: { public: true },
   },
 
+  {
+    path: '/register',
+    name: 'Register',
+    component: () => import('../pages/Register.vue'),
+    meta: { public: true },
+  },
+
   // Public pages (no auth required)
   {
     path: '/',
@@ -98,7 +105,7 @@ router.beforeEach((to) => {
   const auth = useAuthStore()
   if (!to.meta.public && !auth.isLoggedIn) return '/login'
   if (to.meta.requiresAdmin && !auth.isAdmin) return '/'
-  if (to.path === '/login' && auth.isLoggedIn) return '/dashboard'
+  if ((to.path === '/login' || to.path === '/register') && auth.isLoggedIn) return '/dashboard'
 })
 
 export default router
