@@ -61,4 +61,36 @@ public class CompetitionZoneController {
                 "error", "No se pudo crear la zona: revisa que envíes idTournament, name y un GeoJSON de polígono válido en 'geometry'"));
         }
     }
+
+    // PUT: editar una zona de competencia (solo ADMIN).
+    @PutMapping("/{id}")
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody String body) {
+        try {
+            int rows = jdbc.update("""
+                WITH input AS (SELECT ?::json AS j)
+                UPDATE competition_zones
+                SET name = j ->> 'name',
+                    zone_polygon = ST_GeomFromGeoJSON(j -> 'geometry')
+                FROM input
+                WHERE id_zone = ?
+                """, body, id);
+            if (rows == 0) {
+                return ResponseEntity.status(404).body(Map.of("error", "Zona no encontrada"));
+            }
+            return ResponseEntity.ok(Map.of("id_zone", id, "message", "Zona actualizada"));
+        } catch (DataAccessException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "No se pudo actualizar la zona: revisa que envíes name y un GeoJSON de polígono válido en 'geometry'"));
+        }
+    }
+
+    // DELETE: eliminar una zona de competencia (solo ADMIN).
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> delete(@PathVariable Long id) {
+        int rows = jdbc.update("DELETE FROM competition_zones WHERE id_zone = ?", id);
+        if (rows == 0) {
+            return ResponseEntity.status(404).body(Map.of("error", "Zona no encontrada"));
+        }
+        return ResponseEntity.noContent().build();
+    }
 }

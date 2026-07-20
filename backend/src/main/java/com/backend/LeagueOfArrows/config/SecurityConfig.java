@@ -40,6 +40,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/archers/top-month").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/archers/leaderboard").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/competition-zones/**").permitAll()
+                        
 
                         // Rutas especificas
                         .requestMatchers(HttpMethod.GET, "/api/archers/me/history").hasRole("ARQUERO")
@@ -64,6 +65,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,  "/api/audit").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET,  "/api/tournaments/*/rankings").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/competition-zones/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT,    "/api/competition-zones/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/competition-zones/**").hasRole("ADMIN")
                         
 
 
