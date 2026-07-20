@@ -56,6 +56,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/rounds/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET,  "/api/rounds/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT,  "/api/rounds/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/rounds/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET,  "/api/audit").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET,  "/api/tournaments/*/rankings").authenticated()
 

@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("/api/rounds")
@@ -20,7 +21,7 @@ public class RoundController {
     private final RoundRepository roundRepository;
     private final JwtService      jwtService;
 
-    // ── Register a new round ─────────────────────────────────────────
+    // Register a new round 
     @PostMapping
     public ResponseEntity<?> registerRound(
             @RequestBody RoundRequestDTO dto,
@@ -40,7 +41,7 @@ public class RoundController {
         return ResponseEntity.ok(roundRepository.getRoundsByTournamentAndArcher(tournamentId, archerId));
     }
 
-    // ── Update a single arrow score ──────────────────────────────────
+    // Update a single arrow score 
     @PutMapping("/{roundId}/arrows/{arrowId}")
     public ResponseEntity<?> updateArrow(
             @PathVariable Long roundId,
@@ -59,7 +60,32 @@ public class RoundController {
         return ResponseEntity.ok(Map.of("message", "Puntaje actualizado correctamente"));
     }
 
-    // ── Helper ───────────────────────────────────────────────────────
+    // Delete a full round (its arrows cascade automatically) 
+    @DeleteMapping("/{roundId}")
+    public ResponseEntity<?> deleteRound(@PathVariable Long roundId) {
+        try {
+            int rows = roundRepository.deleteRound(roundId);
+            if (rows == 0) throw new NoSuchElementException("Ronda no encontrada");
+            return ResponseEntity.noContent().build();
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+
+    // Delete a single arrow 
+    @DeleteMapping("/{roundId}/arrows/{arrowId}")
+    public ResponseEntity<?> deleteArrow(@PathVariable Long roundId, @PathVariable Long arrowId) {
+        try {
+            int rows = roundRepository.deleteArrow(roundId, arrowId);
+            if (rows == 0) throw new NoSuchElementException("Flecha no encontrada");
+            return ResponseEntity.noContent().build();
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // Helper 
     private Long extractUserId(HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {

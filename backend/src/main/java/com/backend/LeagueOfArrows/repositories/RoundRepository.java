@@ -15,7 +15,7 @@ public class RoundRepository {
 
     private final JdbcTemplate jdbc;
 
-    // ── Register full round via Stored Procedure ─────────────────────
+    // Register full round via Stored Procedure 
     @Transactional
     public void registerRound(RoundRequestDTO dto, Long adminUserId) {
         if (adminUserId != null) {
@@ -29,7 +29,7 @@ public class RoundRepository {
         );
     }
 
-    // ── Get rounds with arrows for a given archer+tournament ─────────
+    // Get rounds with arrows for a given archer+tournament 
     public List<RoundDetailDTO> getRoundsByTournamentAndArcher(Long tournamentId, Long archerId) {
         String roundSql = """
             SELECT id_round, round_number
@@ -67,7 +67,7 @@ public class RoundRepository {
         return rounds;
     }
 
-    // ── Update a single arrow — triggers audit log automatically ─────
+    // Update a single arrow triggers audit log automatically
     @Transactional
     public void updateArrowScore(Long roundId, Long arrowId, Integer newScore, Long adminUserId) {
         if (adminUserId != null) {
@@ -78,5 +78,15 @@ public class RoundRepository {
             SET score = ?
             WHERE id_arrow = ? AND id_round = ?
         """, newScore, arrowId, roundId);
+    }
+
+    // Delete a full round (arrows cascade via FK) 
+    public int deleteRound(Long roundId) {
+        return jdbc.update("DELETE FROM rounds WHERE id_round = ?", roundId);
+    }
+
+    // Delete a single arrow 
+    public int deleteArrow(Long roundId, Long arrowId) {
+        return jdbc.update("DELETE FROM arrows WHERE id_arrow = ? AND id_round = ?", arrowId, roundId);
     }
 }
