@@ -67,6 +67,12 @@ const routes = [
     meta: { requiresAdmin: true },
   },
   {
+    path: '/admin/categories',
+    name: 'AdminCategories',
+    component: () => import('../pages/admin/AdminCategories.vue'),
+    meta: { requiresAdmin: true },
+  },
+  {
     path: '/admin/tournaments',
     name: 'AdminTournaments',
     component: () => import('../pages/admin/AdminTournaments.vue'),

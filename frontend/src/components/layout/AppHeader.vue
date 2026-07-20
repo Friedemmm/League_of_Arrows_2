@@ -100,6 +100,9 @@
             <RouterLink to="/admin/tournaments" class="dp-item" @click.stop="userOpen = false" id="sidebar-manage-events">
               <span class="material-icons dp-icon">emoji_events</span> Gestionar Eventos
             </RouterLink>
+            <RouterLink to="/admin/categories" class="dp-item" @click.stop="userOpen = false" id="sidebar-manage-categories">
+              <span class="material-icons dp-icon">category</span> Gestionar Categorías
+            </RouterLink>
             <RouterLink to="/admin/scoring" class="dp-item" @click.stop="userOpen = false" id="sidebar-score-entry">
               <span class="material-icons dp-icon">sports_score</span> Registro de Puntajes
             </RouterLink>

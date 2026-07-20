@@ -2,8 +2,8 @@
   <div class="page-wrapper">
     <div class="container" style="max-width:700px;">
       <div class="flex-between mb-4">
-        <h1 class="section-title" style="margin-bottom:0;">Categories</h1>
-        <button class="btn btn-gold" id="btn-add-category" @click="openCreate">+ New Category</button>
+        <h1 class="section-title" style="margin-bottom:0;">Categorías</h1>
+        <button class="btn btn-gold" id="btn-add-category" @click="openCreate">+ Nueva Categoría</button>
       </div>
 
       <div v-if="loading" class="loading-center"><div class="spinner"></div></div>
@@ -13,23 +13,23 @@
           <thead>
             <tr>
               <th>ID</th>
-              <th>Name</th>
-              <th>Actions</th>
+              <th>Nombre</th>
+              <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="c in categories" :key="c.idCategory" :id="`category-row-${c.idCategory}`">
-              <td class="text-muted">#{{ c.idCategory }}</td>
+            <tr v-for="c in categories" :key="c.id_category" :id="`category-row-${c.id_category}`">
+              <td class="text-muted">#{{ c.id_category }}</td>
               <td><span class="badge badge-blue">{{ c.name }}</span></td>
               <td>
                 <div class="flex gap-1">
-                  <button class="btn btn-ghost btn-sm" :id="`btn-edit-category-${c.idCategory}`" @click="openEdit(c)">Edit</button>
-                  <button class="btn btn-danger btn-sm" :id="`btn-delete-category-${c.idCategory}`" @click="confirmDelete(c)">Delete</button>
+                  <button class="btn btn-ghost btn-sm" :id="`btn-edit-category-${c.id_category}`" @click="openEdit(c)">Editar</button>
+                  <button class="btn btn-danger btn-sm" :id="`btn-delete-category-${c.id_category}`" @click="confirmDelete(c)">Eliminar</button>
                 </div>
               </td>
             </tr>
             <tr v-if="categories.length === 0">
-              <td colspan="3" class="text-center text-muted" style="padding:2rem;">No categories yet.</td>
+              <td colspan="3" class="text-center text-muted" style="padding:2rem;">Aún no hay categorías.</td>
             </tr>
           </tbody>
         </table>
@@ -40,7 +40,7 @@
         <div class="modal-overlay" v-if="showModal" @click.self="showModal = false">
           <div class="modal-box">
             <div class="modal-header">
-              <h3>{{ editingCat ? 'Edit Category' : 'New Category' }}</h3>
+              <h3>{{ editingCat ? 'Editar Categoría' : 'Nueva Categoría' }}</h3>
               <button class="modal-close" @click="showModal = false">✕</button>
             </div>
             <div class="modal-body">
@@ -48,14 +48,14 @@
                 <div class="alert alert-error" v-if="modalError">⚠ {{ modalError }}</div>
               </Transition>
               <div class="form-group">
-                <label class="form-label" for="cat-name">Category Name</label>
-                <input id="cat-name" class="form-input" v-model="catName" placeholder="e.g. Recurve Open" />
+                <label class="form-label" for="cat-name">Nombre de la Categoría</label>
+                <input id="cat-name" class="form-input" v-model="catName" placeholder="ej. Recurvo Abierto" />
               </div>
             </div>
             <div class="modal-footer">
-              <button class="btn btn-ghost" @click="showModal = false">Cancel</button>
+              <button class="btn btn-ghost" @click="showModal = false">Cancelar</button>
               <button class="btn btn-gold" id="btn-save-category" @click="saveCategory" :disabled="saving">
-                {{ saving ? 'Saving...' : 'Save' }}
+                {{ saving ? 'Guardando...' : 'Guardar' }}
               </button>
             </div>
           </div>
@@ -67,17 +67,20 @@
         <div class="modal-overlay" v-if="showDeleteModal" @click.self="showDeleteModal = false">
           <div class="modal-box">
             <div class="modal-header">
-              <h3>Delete Category</h3>
+              <h3>Eliminar Categoría</h3>
               <button class="modal-close" @click="showDeleteModal = false">✕</button>
             </div>
             <div class="modal-body">
-              <p class="text-secondary">Delete category <strong class="text-gold">{{ deletingCat?.name }}</strong>?
-              Archers/tournaments in this category will be unlinked.</p>
+              <Transition name="slide-up">
+                <div class="alert alert-error" v-if="deleteError">⚠ {{ deleteError }}</div>
+              </Transition>
+              <p class="text-secondary">¿Eliminar la categoría <strong class="text-gold">{{ deletingCat?.name }}</strong>?
+              Los arqueros de esta categoría quedarán sin categoría.</p>
             </div>
             <div class="modal-footer">
-              <button class="btn btn-ghost" @click="showDeleteModal = false">Cancel</button>
+              <button class="btn btn-ghost" @click="showDeleteModal = false">Cancelar</button>
               <button class="btn btn-danger" id="btn-confirm-delete-category" @click="doDelete" :disabled="saving">
-                {{ saving ? 'Deleting...' : 'Delete' }}
+                {{ saving ? 'Eliminando...' : 'Eliminar' }}
               </button>
             </div>
           </div>
@@ -100,6 +103,7 @@ const deletingCat    = ref(null)
 const catName        = ref('')
 const saving         = ref(false)
 const modalError     = ref('')
+const deleteError    = ref('')
 
 async function load() {
   try { const res = await api.get('/categories'); categories.value = res.data }
@@ -108,28 +112,31 @@ async function load() {
 
 function openCreate() { editingCat.value = null; catName.value = ''; modalError.value = ''; showModal.value = true }
 function openEdit(c)  { editingCat.value = c; catName.value = c.name; modalError.value = ''; showModal.value = true }
-function confirmDelete(c) { deletingCat.value = c; showDeleteModal.value = true }
+function confirmDelete(c) { deletingCat.value = c; deleteError.value = ''; showDeleteModal.value = true }
 
 async function saveCategory() {
   modalError.value = ''
   saving.value = true
   try {
-    if (editingCat.value) await api.put(`/categories/${editingCat.value.idCategory}`, { name: catName.value })
+    if (editingCat.value) await api.put(`/categories/${editingCat.value.id_category}`, { name: catName.value })
     else await api.post('/categories', { name: catName.value })
     showModal.value = false
     await load()
   } catch (e) {
-    modalError.value = e.response?.data?.error || 'Failed to save category.'
+    modalError.value = e.response?.data?.error || 'No se pudo guardar la categoría.'
   } finally { saving.value = false }
 }
 
 async function doDelete() {
+  deleteError.value = ''
   saving.value = true
   try {
-    await api.delete(`/categories/${deletingCat.value.idCategory}`)
+    await api.delete(`/categories/${deletingCat.value.id_category}`)
     showDeleteModal.value = false
     await load()
-  } catch { /* ignore */ } finally { saving.value = false }
+  } catch (e) {
+    deleteError.value = e.response?.data?.error || 'No se pudo eliminar la categoría.'
+  } finally { saving.value = false }
 }
 
 onMounted(load)
