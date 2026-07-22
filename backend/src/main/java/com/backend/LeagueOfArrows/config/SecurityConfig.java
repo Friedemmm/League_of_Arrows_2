@@ -41,6 +41,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/archers/leaderboard").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/competition-zones/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/targets/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/fields/**").permitAll()
 
 
                         // Rutas especificas
@@ -71,6 +72,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/targets/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT,    "/api/targets/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/targets/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/fields/**").hasRole("ADMIN")
 
 
 

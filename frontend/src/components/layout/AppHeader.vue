@@ -109,6 +109,9 @@
             <RouterLink to="/admin/audit" class="dp-item" @click.stop="userOpen = false" id="sidebar-audit">
               <span class="material-icons dp-icon">policy</span> Auditoría
             </RouterLink>
+            <RouterLink to="/admin/spatial" class="dp-item" @click.stop="userOpen = false" id="sidebar-spatial">
+              <span class="material-icons dp-icon">satellite_alt</span> Componente Espacial
+            </RouterLink>
           </template>
 
           <button class="dp-item dp-item--danger" @click.stop="handleLogout" id="btn-logout">
@@ -163,6 +166,7 @@ const adminItems = [
   { to: '/admin/ranking',     label: 'Leaderboard',    icon: '◆',  id: 'rankings' },
   { to: '/admin/categories',  label: 'Categorías',  icon: '⊞',  id: 'categorias' },
   { to: '/admin/audit',       label: 'Auditoría',   icon: '📋', id: 'auditoria' },
+  { to: '/admin/spatial',     label: 'Espacial',    icon: '🛰',  id: 'espacial' },
 ]
 
 const isAdminRoute = computed(() => route.path.startsWith('/admin'))

@@ -9,4 +9,7 @@ public class RoundRequestDTO {
     private Long archerId;
     private Integer roundNumber;
     private List<Integer> scores;
+    private Double lon;
+    private Double lat;
+    private Long targetId;
 }

@@ -70,6 +70,13 @@
                     title="Desinscribir arquero">
                     <span class="material-icons">person_remove</span>
                   </button>
+                  <!-- Zona de competencia -->
+                  <button class="btn btn-ghost btn-sm icon-btn"
+                    :id="`btn-zone-tournament-${t.tournamentId}`"
+                    @click="openZoneModal(t)"
+                    title="Zona de competencia">
+                    <span class="material-icons">crop_free</span>
+                  </button>
                   <button class="btn btn-ghost btn-sm icon-btn"
                     :id="`btn-edit-tournament-${t.tournamentId}`" @click="openEdit(t)">
                     <span class="material-icons">edit</span>
@@ -265,6 +272,127 @@
         </div>
       </Transition>
 
+      <!-- ── Competition Zone Modal ── -->
+      <Transition name="fade">
+        <div class="modal-overlay" v-if="showZoneModal" @click.self="showZoneModal = false">
+          <div class="modal-box" style="max-width:640px;">
+            <div class="modal-header">
+              <h3>
+                <span class="material-icons" style="vertical-align:middle;margin-right:0.4rem;color:var(--lol-gold);">crop_free</span>
+                Zona de competencia — {{ zoningT?.name }}
+              </h3>
+              <button class="modal-close" @click="showZoneModal = false">
+                <span class="material-icons">close</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <!-- ── Campo de tiro oficial ── -->
+              <h4 class="text-gold" style="margin-bottom:0.5rem;">
+                <span class="material-icons" style="vertical-align:middle;font-size:1.1rem;">fence</span>
+                Campo de tiro oficial
+              </h4>
+              <p class="text-muted" style="font-size:0.78rem;margin-bottom:0.8rem;">
+                Necesario para que la geocerca valide las posiciones registradas. Un torneo tiene un solo campo;
+                volver a guardar reemplaza el polígono existente.
+              </p>
+              <Transition name="slide-up">
+                <div class="alert alert-error" v-if="fieldError" role="alert">
+                  <span class="material-icons alert-icon">error</span>
+                  <div class="alert-body"><span class="alert-msg">{{ fieldError }}</span></div>
+                </div>
+              </Transition>
+              <Transition name="slide-up">
+                <div class="alert alert-success" v-if="fieldSuccess" role="status">
+                  <span class="material-icons alert-icon">check_circle</span>
+                  <div class="alert-body"><span class="alert-msg">{{ fieldSuccess }}</span></div>
+                </div>
+              </Transition>
+              <p v-if="existingField" class="text-secondary" style="font-size:0.8rem;margin-bottom:0.5rem;">
+                Campo actual: <strong class="text-gold">{{ existingField.properties.name }}</strong>
+              </p>
+              <div class="form-group">
+                <label class="form-label" for="field-name">Nombre del campo</label>
+                <input id="field-name" class="form-input" v-model="fieldName" placeholder="Ej. Campo Nacional de Tiro con Arco" />
+              </div>
+              <CompetitionZoneMap
+                :tournament-id="zoningT?.tournamentId"
+                map-id="field-draw-map"
+                load-endpoint="/fields"
+                draw-color="#5b8dd6"
+                @polygon-changed="onFieldPolygonChanged" />
+              <div style="text-align:right;margin:0.5rem 0 1.5rem;">
+                <button class="btn btn-gold btn-sm" id="btn-save-field" @click="saveField"
+                  :disabled="savingField || !fieldName.trim() || !fieldGeometry">
+                  <span class="material-icons btn-icon" style="font-size:0.9rem;">save</span>
+                  {{ savingField ? 'Guardando...' : 'Guardar campo' }}
+                </button>
+              </div>
+
+              <hr class="page-rule" />
+
+              <!-- ── Zona de competencia ── -->
+              <h4 class="text-gold" style="margin-bottom:0.5rem;">
+                <span class="material-icons" style="vertical-align:middle;font-size:1.1rem;">crop_free</span>
+                Zona de competencia
+              </h4>
+              <Transition name="slide-up">
+                <div class="alert alert-error" v-if="zoneError" role="alert">
+                  <span class="material-icons alert-icon">error</span>
+                  <div class="alert-body">
+                    <span class="alert-title">Error</span>
+                    <span class="alert-msg">{{ zoneError }}</span>
+                  </div>
+                </div>
+              </Transition>
+              <Transition name="slide-up">
+                <div class="alert alert-success" v-if="zoneSuccess" role="status">
+                  <span class="material-icons alert-icon">check_circle</span>
+                  <div class="alert-body">
+                    <span class="alert-title">Listo</span>
+                    <span class="alert-msg">{{ zoneSuccess }}</span>
+                  </div>
+                </div>
+              </Transition>
+
+              <div v-if="existingZones.length > 0" style="margin-bottom:1rem;">
+                <label class="form-label">Zonas ya definidas</label>
+                <ul class="inscribed-list">
+                  <li v-for="z in existingZones" :key="z.properties.id_zone" class="inscribed-item">
+                    <span class="material-icons" style="font-size:1rem;color:#5b8dd6;flex-shrink:0;">layers</span>
+                    <span class="inscribed-name">{{ z.properties.name }}</span>
+                    <button class="btn btn-danger btn-sm icon-btn" style="margin-left:auto;"
+                      :id="`btn-delete-zone-${z.properties.id_zone}`"
+                      @click="deleteZone(z.properties.id_zone)" title="Eliminar zona">
+                      <span class="material-icons" style="font-size:0.9rem;">delete</span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="zone-name">Nombre de la nueva zona</label>
+                <input id="zone-name" class="form-input" v-model="zoneName" placeholder="Ej. Línea de tiro A" />
+              </div>
+
+              <CompetitionZoneMap
+                :tournament-id="zoningT?.tournamentId"
+                map-id="zone-draw-map"
+                load-endpoint="/competition-zones"
+                draw-color="#c89b3c"
+                @polygon-changed="onPolygonChanged" />
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-ghost" @click="showZoneModal = false">Cerrar</button>
+              <button class="btn btn-gold" id="btn-save-zone" @click="saveZone"
+                :disabled="savingZone || !zoneName.trim() || !zoneGeometry">
+                <span class="material-icons btn-icon">save</span>
+                {{ savingZone ? 'Guardando...' : 'Guardar zona' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+
       <!-- Create/Edit Modal -->
       <Transition name="fade">
         <div class="modal-overlay" v-if="showModal" @click.self="showModal = false">
@@ -352,6 +480,7 @@ import { getTournaments, createTournament, updateTournament, deleteTournament } 
 import { getArchers } from '@/api/archers'
 import { deleteInscription } from '@/api/inscriptions'
 import api from '@/api/axios'
+import CompetitionZoneMap from './CompetitionZoneMap.vue'
 
 const tournaments     = ref([])
 const categories      = ref([])
@@ -362,11 +491,25 @@ const showDeleteModal     = ref(false)
 const showInscribeModal   = ref(false)
 const showUnregisterModal = ref(false)
 const showViewModal       = ref(false)
+const showZoneModal       = ref(false)
 const editingT            = ref(null)
 const deletingT           = ref(null)
 const inscribingT         = ref(null)
 const unregisteringT      = ref(null)
 const viewingT            = ref(null)
+const zoningT              = ref(null)
+const zoneName             = ref('')
+const zoneGeometry         = ref(null)
+const existingZones        = ref([])
+const zoneError            = ref('')
+const zoneSuccess          = ref('')
+const savingZone           = ref(false)
+const fieldName            = ref('')
+const fieldGeometry        = ref(null)
+const existingField        = ref(null)
+const fieldError           = ref('')
+const fieldSuccess         = ref('')
+const savingField          = ref(false)
 const inscribeArcherId        = ref(null)
 const unregisterInscriptionId = ref(null)
 const allInscriptions         = ref([])   // todas las inscripciones cargadas al montar
@@ -475,6 +618,88 @@ function openUnregister(t) {
   unregisterSuccess.value       = ''
   tournamentInscriptions.value  = getInscribedForTournament(t.tournamentId)
   showUnregisterModal.value     = true
+}
+
+async function openZoneModal(t) {
+  zoningT.value      = t
+  zoneName.value      = ''
+  zoneGeometry.value  = null
+  zoneError.value     = ''
+  zoneSuccess.value   = ''
+  existingZones.value = []
+  fieldName.value      = ''
+  fieldGeometry.value  = null
+  fieldError.value     = ''
+  fieldSuccess.value   = ''
+  existingField.value  = null
+  showZoneModal.value = true
+  try {
+    const res = await api.get(`/competition-zones/tournament/${t.tournamentId}`)
+    existingZones.value = res.data.features || []
+  } catch (e) {
+    console.error('[AdminTournaments] error cargando zonas:', e.message)
+  }
+  try {
+    const res = await api.get(`/fields/tournament/${t.tournamentId}`)
+    existingField.value = (res.data.features || [])[0] || null
+  } catch (e) {
+    console.error('[AdminTournaments] error cargando campo:', e.message)
+  }
+}
+
+function onPolygonChanged(geometry) {
+  zoneGeometry.value = geometry
+}
+
+function onFieldPolygonChanged(geometry) {
+  fieldGeometry.value = geometry
+}
+
+async function saveField() {
+  fieldError.value = fieldSuccess.value = ''
+  savingField.value = true
+  try {
+    await api.post('/fields', {
+      idTournament: zoningT.value.tournamentId,
+      name: fieldName.value.trim(),
+      geometry: fieldGeometry.value,
+    })
+    fieldSuccess.value = 'Campo guardado correctamente.'
+    const res = await api.get(`/fields/tournament/${zoningT.value.tournamentId}`)
+    existingField.value = (res.data.features || [])[0] || null
+  } catch (e) {
+    fieldError.value = e.response?.data?.error || 'Error al guardar el campo.'
+  } finally { savingField.value = false }
+}
+
+async function saveZone() {
+  zoneError.value = zoneSuccess.value = ''
+  savingZone.value = true
+  try {
+    await api.post('/competition-zones', {
+      idTournament: zoningT.value.tournamentId,
+      name: zoneName.value.trim(),
+      geometry: zoneGeometry.value,
+    })
+    zoneSuccess.value = 'Zona guardada correctamente.'
+    zoneName.value = ''
+    zoneGeometry.value = null
+    const res = await api.get(`/competition-zones/tournament/${zoningT.value.tournamentId}`)
+    existingZones.value = res.data.features || []
+  } catch (e) {
+    zoneError.value = e.response?.data?.error || 'Error al guardar la zona.'
+  } finally { savingZone.value = false }
+}
+
+async function deleteZone(idZone) {
+  zoneError.value = zoneSuccess.value = ''
+  try {
+    await api.delete(`/competition-zones/${idZone}`)
+    existingZones.value = existingZones.value.filter(z => z.properties.id_zone !== idZone)
+    zoneSuccess.value = 'Zona eliminada.'
+  } catch (e) {
+    zoneError.value = e.response?.data?.error || 'Error al eliminar la zona.'
+  }
 }
 
 async function saveTournament() {

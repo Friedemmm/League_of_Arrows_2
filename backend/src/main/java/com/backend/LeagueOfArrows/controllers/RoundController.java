@@ -24,14 +24,18 @@ public class RoundController {
     private final RoundRepository roundRepository;
     private final JwtService      jwtService;
 
-    // Register a new round 
+    // Register a new round
     @PostMapping
     public ResponseEntity<?> registerRound(
             @RequestBody RoundRequestDTO dto,
             HttpServletRequest request) {
 
         Long adminUserId = extractUserId(request);
-        roundRepository.registerRound(dto, adminUserId);
+        try {
+            roundRepository.registerRound(dto, adminUserId);
+        } catch (DataAccessException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", cleanDbMessage(e)));
+        }
         return ResponseEntity.ok(Map.of("message", "Ronda registrada exitosamente"));
     }
 
@@ -110,8 +114,7 @@ public class RoundController {
                 return ResponseEntity.status(404).body(Map.of("error", "Ronda no encontrada"));
             }
         } catch (DataAccessException e) {
-            Throwable cause = e.getMostSpecificCause();
-            return ResponseEntity.badRequest().body(Map.of("error", cause.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("error", cleanDbMessage(e)));
         }
 
         DistanceCheckDTO check = null;
@@ -124,6 +127,16 @@ public class RoundController {
                 "message", "Posición registrada correctamente",
                 "distanceCheck", check == null ? Map.of() : check
         ));
+    }
+
+    // Extrae solo el mensaje de negocio del RAISE EXCEPTION de Postgres,
+    // descartando el "Where: PL/pgSQL function ..." y el SQL statement que
+    // JDBC agrega al mensaje completo.
+    private String cleanDbMessage(DataAccessException e) {
+        String raw = e.getMostSpecificCause().getMessage();
+        if (raw == null) return "No se pudo completar la operación.";
+        String firstLine = raw.split("\n", 2)[0].trim();
+        return firstLine.startsWith("ERROR:") ? firstLine.substring("ERROR:".length()).trim() : firstLine;
     }
 
     // Helper

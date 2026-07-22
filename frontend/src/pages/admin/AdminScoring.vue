@@ -55,6 +55,22 @@
             <label class="form-label" for="scoring-round">Número de Ronda</label>
             <input id="scoring-round" class="form-input" type="number" v-model.number="form.roundNumber" placeholder="Ronda (ej. 1)" min="1" style="max-width:160px;" />
           </div>
+
+          <!-- Posición del arquero (opcional) -->
+          <div class="form-group" v-if="form.tournamentId">
+            <label class="form-label" for="scoring-target">Blanco asignado (opcional)</label>
+            <select id="scoring-target" class="form-input" v-model.number="form.targetId" style="max-width:320px;">
+              <option :value="null">— Sin blanco asignado —</option>
+              <option v-for="t in tournamentTargets" :key="t.properties.id_target" :value="t.properties.id_target">
+                {{ t.properties.label }} ({{ t.properties.required_distance_m }} m)
+              </option>
+            </select>
+            <span class="hint-text" style="color:var(--text-muted);">
+              Si marcas la posición del arquero en el mapa, se valida la zona de competencia,
+              la geocerca del campo y la distancia de seguridad.
+            </span>
+            <InscriptionMap :tournament-id="form.tournamentId" @position-selected="onPositionSelected" />
+          </div>
           <div class="form-group">
             <label class="form-label">Puntajes de Flechas (0–10 por flecha)</label>
             <div class="arrow-inputs">
@@ -170,10 +186,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import api from '@/api/axios'
 import { getArchers } from '@/api/archers'
 import { getTournaments } from '@/api/tournaments'
+import InscriptionMap from './InscriptionMap.vue'
 
 const mode        = ref('register')
 const loadingData = ref(true)
@@ -186,7 +203,28 @@ const error      = ref('')
 const success    = ref('')
 const submitting = ref(false)
 const arrowCount = ref(6)
-const form = reactive({ tournamentId: null, archerId: null, roundNumber: 1, arrows: Array(6).fill(null) })
+const form = reactive({
+  tournamentId: null, archerId: null, roundNumber: 1, arrows: Array(6).fill(null),
+  targetId: null, lon: null, lat: null,
+})
+const tournamentTargets = ref([])
+
+function onPositionSelected(point) {
+  form.lon = point.coordinates[0]
+  form.lat = point.coordinates[1]
+}
+
+async function loadTournamentTargets(tournamentId) {
+  tournamentTargets.value = []
+  form.targetId = null
+  if (!tournamentId) return
+  try {
+    const res = await api.get(`/targets/tournament/${tournamentId}`)
+    tournamentTargets.value = res.data.features || []
+  } catch (e) { console.error('[AdminScoring] targets error:', e.message) }
+}
+
+watch(() => form.tournamentId, (id) => { loadTournamentTargets(id) })
 
 const hasScores  = computed(() => form.arrows.some(a => a !== null))
 const roundTotal = computed(() => form.arrows.reduce((sum, v) => sum + (typeof v === 'number' ? v : 0), 0))
@@ -218,7 +256,10 @@ function bubbleClass(s) {
   return 'bubble-low'
 }
 function resetForm() {
-  Object.assign(form, { tournamentId: null, archerId: null, roundNumber: 1, arrows: Array(arrowCount.value).fill(null) })
+  Object.assign(form, {
+    tournamentId: null, archerId: null, roundNumber: 1, arrows: Array(arrowCount.value).fill(null),
+    targetId: null, lon: null, lat: null,
+  })
   error.value = success.value = ''
 }
 async function submitScore() {
@@ -228,7 +269,10 @@ async function submitScore() {
   const scores = form.arrows.map(v => (v === 'M' || v === null) ? 0 : Number(v))
   submitting.value = true
   try {
-    await api.post('/rounds', { tournamentId: form.tournamentId, archerId: form.archerId, roundNumber: form.roundNumber, scores })
+    await api.post('/rounds', {
+      tournamentId: form.tournamentId, archerId: form.archerId, roundNumber: form.roundNumber, scores,
+      targetId: form.targetId, lon: form.lon, lat: form.lat,
+    })
     success.value = '¡Ronda registrada exitosamente!'
     resetForm()
   } catch (e) {

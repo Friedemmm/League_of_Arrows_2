@@ -16,17 +16,22 @@ public class RoundRepository {
 
     private final JdbcTemplate jdbc;
 
-    // Register full round via Stored Procedure 
+    // Register full round via Stored Procedure
+    //    lon/lat/targetId son opcionales: si vienen, quedan guardados en la
+    //    ronda desde el inicio y disparan los triggers espaciales.
     @Transactional
     public void registerRound(RoundRequestDTO dto, Long adminUserId) {
         if (adminUserId != null) {
             jdbc.execute("SET LOCAL app.current_user_id = " + adminUserId);
         }
-        jdbc.update("CALL registrar_puntuacion_ronda(?, ?, ?, ?::integer[])",
+        jdbc.update("CALL registrar_puntuacion_ronda(?, ?, ?, ?::integer[], ?, ?, ?)",
                 dto.getTournamentId(),
                 dto.getArcherId(),
                 dto.getRoundNumber(),
-                "{" + dto.getScores().toString().replace("[", "").replace("]", "") + "}"
+                "{" + dto.getScores().toString().replace("[", "").replace("]", "") + "}",
+                dto.getLon(),
+                dto.getLat(),
+                dto.getTargetId()
         );
     }
 
