@@ -49,12 +49,26 @@
               </td>
               <td>
                 <div class="flex gap-1">
+                  <!-- Ver inscritos -->
+                  <button class="btn btn-ghost btn-sm icon-btn"
+                    :id="`btn-view-inscribed-${t.tournamentId}`"
+                    @click="openViewInscribed(t)"
+                    title="Ver inscritos">
+                    <span class="material-icons">group</span>
+                  </button>
                   <!-- Inscribir arquero -->
                   <button class="btn btn-gold btn-sm icon-btn"
                     :id="`btn-inscribe-tournament-${t.tournamentId}`"
                     @click="openInscribe(t)"
                     title="Inscribir arquero">
                     <span class="material-icons">person_add</span>
+                  </button>
+                  <!-- Desinscribir arquero -->
+                  <button class="btn btn-danger btn-sm icon-btn"
+                    :id="`btn-unregister-tournament-${t.tournamentId}`"
+                    @click="openUnregister(t)"
+                    title="Desinscribir arquero">
+                    <span class="material-icons">person_remove</span>
                   </button>
                   <button class="btn btn-ghost btn-sm icon-btn"
                     :id="`btn-edit-tournament-${t.tournamentId}`" @click="openEdit(t)">
@@ -74,6 +88,37 @@
         </table>
       </div>
 
+      <!-- ── View Inscribed Modal ── -->
+      <Transition name="fade">
+        <div class="modal-overlay" v-if="showViewModal" @click.self="showViewModal = false">
+          <div class="modal-box">
+            <div class="modal-header">
+              <h3>
+                <span class="material-icons" style="vertical-align:middle;margin-right:0.4rem;color:var(--lol-gold);">group</span>
+                Inscritos en {{ viewingT?.name }}
+              </h3>
+              <button class="modal-close" @click="showViewModal = false">
+                <span class="material-icons">close</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div v-if="viewInscribed.length === 0" class="text-muted" style="text-align:center;padding:1.5rem 0;font-size:0.85rem;">
+                No hay arqueros inscritos en este torneo.
+              </div>
+              <ul v-else class="inscribed-list">
+                <li v-for="entry in viewInscribed" :key="entry.inscriptionId" class="inscribed-item">
+                  <span class="material-icons" style="font-size:1rem;color:var(--lol-gold);flex-shrink:0;">person</span>
+                  <span class="inscribed-name">{{ entry.archerName }}</span>
+                </li>
+              </ul>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-ghost" @click="showViewModal = false">Cerrar</button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+
       <!-- ── Inscribe Archer Modal ── -->
       <Transition name="fade">
         <div class="modal-overlay" v-if="showInscribeModal" @click.self="showInscribeModal = false">
@@ -89,36 +134,131 @@
             </div>
             <div class="modal-body">
               <Transition name="slide-up">
-                <div class="alert alert-error" v-if="inscribeError">
-                  <span class="material-icons">warning</span> {{ inscribeError }}
+                <div class="alert alert-error" v-if="inscribeError" role="alert">
+                  <span class="material-icons alert-icon">error</span>
+                  <div class="alert-body">
+                    <span class="alert-title">Error al inscribir</span>
+                    <span class="alert-msg">{{ inscribeError }}</span>
+                  </div>
                 </div>
               </Transition>
               <Transition name="slide-up">
-                <div class="alert alert-success" v-if="inscribeSuccess">
-                  <span class="material-icons">check_circle</span> {{ inscribeSuccess }}
+                <div class="alert alert-success" v-if="inscribeSuccess" role="status">
+                  <span class="material-icons alert-icon">check_circle</span>
+                  <div class="alert-body">
+                    <span class="alert-title">Inscripción exitosa</span>
+                    <span class="alert-msg">{{ inscribeSuccess }}</span>
+                  </div>
                 </div>
               </Transition>
 
               <p class="text-secondary" style="margin-bottom:1rem;">
                 Torneo: <strong class="text-gold">{{ inscribingT?.name }}</strong>
+                <span v-if="inscribingT?.categoryName" class="badge badge-blue" style="margin-left:0.5rem;">{{ inscribingT.categoryName }}</span>
               </p>
 
               <div class="form-group">
                 <label class="form-label" for="inscribe-archer-select">Seleccionar Arquero</label>
                 <select id="inscribe-archer-select" class="form-input" v-model.number="inscribeArcherId">
                   <option :value="null" disabled>— Selecciona un arquero —</option>
-                  <option v-for="a in archers" :key="a.archerId" :value="a.archerId">
-                    {{ a.name }} <span v-if="a.categoryName">({{ a.categoryName }})</span>
+                  <option
+                    v-for="a in archers"
+                    :key="a.archerId"
+                    :value="a.archerId"
+                    :class="{ 'option-incompatible': inscribingT?.categoryId && a.categoryId !== inscribingT.categoryId }"
+                  >
+                    {{ a.name }}
+                    <template v-if="a.categoryName"> ({{ a.categoryName }})</template>
+                    <template v-if="inscribingT?.categoryId && a.categoryId !== inscribingT.categoryId"> ⚠️ Categoría distinta</template>
                   </option>
                 </select>
               </div>
+
+              <!-- Alerta de incompatibilidad de categoría -->
+              <Transition name="slide-up">
+                <div class="alert alert-warning" v-if="categoryMismatch" role="alert">
+                  <span class="material-icons alert-icon">category</span>
+                  <div class="alert-body">
+                    <span class="alert-title">Categoría incompatible</span>
+                    <span class="alert-msg">
+                      <strong>{{ categoryMismatchArcherName }}</strong> pertenece a la categoría
+                      <strong>"{{ categoryMismatchArcherCat }}"</strong>, pero este torneo es de categoría
+                      <strong>"{{ inscribingT?.categoryName }}"</strong>.
+                      No se puede inscribir.
+                    </span>
+                  </div>
+                </div>
+              </Transition>
             </div>
             <div class="modal-footer">
               <button class="btn btn-ghost" @click="showInscribeModal = false">Cancelar</button>
               <button class="btn btn-gold" id="btn-confirm-inscribe" @click="doInscribe"
-                :disabled="saving || !inscribeArcherId">
+                :disabled="saving || !inscribeArcherId || categoryMismatch">
                 <span class="material-icons btn-icon">how_to_reg</span>
                 {{ saving ? 'Inscribiendo...' : 'Inscribir' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+
+      <!-- ── Unregister Archer Modal ── -->
+      <Transition name="fade">
+        <div class="modal-overlay" v-if="showUnregisterModal" @click.self="showUnregisterModal = false">
+          <div class="modal-box">
+            <div class="modal-header">
+              <h3>
+                <span class="material-icons" style="vertical-align:middle;margin-right:0.4rem;color:#e84057;">person_remove</span>
+                Desinscribir Arquero
+              </h3>
+              <button class="modal-close" @click="showUnregisterModal = false">
+                <span class="material-icons">close</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <Transition name="slide-up">
+                <div class="alert alert-error" v-if="unregisterError" role="alert">
+                  <span class="material-icons alert-icon">error</span>
+                  <div class="alert-body">
+                    <span class="alert-title">Error al desinscribir</span>
+                    <span class="alert-msg">{{ unregisterError }}</span>
+                  </div>
+                </div>
+              </Transition>
+              <Transition name="slide-up">
+                <div class="alert alert-success" v-if="unregisterSuccess" role="status">
+                  <span class="material-icons alert-icon">check_circle</span>
+                  <div class="alert-body">
+                    <span class="alert-title">Desinscripción exitosa</span>
+                    <span class="alert-msg">{{ unregisterSuccess }}</span>
+                  </div>
+                </div>
+              </Transition>
+
+              <p class="text-secondary" style="margin-bottom:1rem;">
+                Torneo: <strong class="text-gold">{{ unregisteringT?.name }}</strong>
+              </p>
+
+              <div class="form-group">
+                <label class="form-label" for="unregister-archer-select">Seleccionar Arquero Inscrito</label>
+                <div v-if="loadingInscriptions" class="loading-center" style="padding:1rem 0;"><div class="spinner"></div></div>
+                <select v-else id="unregister-archer-select" class="form-input" v-model.number="unregisterInscriptionId">
+                  <option :value="null" disabled>— Selecciona un arquero —</option>
+                  <option v-for="i in tournamentInscriptions" :key="i.inscriptionId" :value="i.inscriptionId">
+                    {{ i.archerName }}
+                  </option>
+                </select>
+                <p v-if="!loadingInscriptions && tournamentInscriptions.length === 0" class="text-muted" style="margin-top:0.5rem;font-size:0.8rem;">
+                  No hay arqueros inscritos en este torneo.
+                </p>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-ghost" @click="showUnregisterModal = false">Cancelar</button>
+              <button class="btn btn-danger" id="btn-confirm-unregister" @click="doUnregister"
+                :disabled="saving || !unregisterInscriptionId || tournamentInscriptions.length === 0">
+                <span class="material-icons btn-icon">person_remove</span>
+                {{ saving ? 'Desinscribiendo...' : 'Desinscribir' }}
               </button>
             </div>
           </div>
@@ -207,26 +347,38 @@
 </template>
 
 <script setup>
-import { ref, onMounted, reactive } from 'vue'
+import { ref, watch, onMounted, reactive } from 'vue'
 import { getTournaments, createTournament, updateTournament, deleteTournament } from '@/api/tournaments'
 import { getArchers } from '@/api/archers'
+import { deleteInscription } from '@/api/inscriptions'
 import api from '@/api/axios'
 
 const tournaments     = ref([])
 const categories      = ref([])
 const archers         = ref([])
 const loading         = ref(true)
-const showModal       = ref(false)
-const showDeleteModal = ref(false)
-const showInscribeModal = ref(false)
-const editingT        = ref(null)
-const deletingT       = ref(null)
-const inscribingT     = ref(null)
-const inscribeArcherId = ref(null)
-const inscribeError   = ref('')
-const inscribeSuccess = ref('')
-const saving          = ref(false)
-const modalError      = ref('')
+const showModal           = ref(false)
+const showDeleteModal     = ref(false)
+const showInscribeModal   = ref(false)
+const showUnregisterModal = ref(false)
+const showViewModal       = ref(false)
+const editingT            = ref(null)
+const deletingT           = ref(null)
+const inscribingT         = ref(null)
+const unregisteringT      = ref(null)
+const viewingT            = ref(null)
+const inscribeArcherId        = ref(null)
+const unregisterInscriptionId = ref(null)
+const allInscriptions         = ref([])   // todas las inscripciones cargadas al montar
+const tournamentInscriptions  = ref([])   // inscritos del torneo seleccionado
+const viewInscribed           = ref([])   // lista para el modal "Ver inscritos"
+const loadingInscriptions     = ref(false)
+const inscribeError       = ref('')
+const inscribeSuccess     = ref('')
+const unregisterError     = ref('')
+const unregisterSuccess   = ref('')
+const saving              = ref(false)
+const modalError          = ref('')
 
 const form = reactive({ name: '', categoryId: null, startDate: '', endDate: '', active: true })
 
@@ -251,14 +403,16 @@ function formatDate(d) {
 async function load() {
   loading.value = true
   try {
-    const [tourRes, archerRes, catRes] = await Promise.all([
+    const [tourRes, archerRes, catRes, insRes] = await Promise.all([
       getTournaments(),
       getArchers(),
       api.get('/categories'),
+      api.get('/inscriptions'),
     ])
-    tournaments.value = tourRes.data
-    archers.value     = archerRes.data
-    categories.value  = catRes.data
+    tournaments.value    = tourRes.data
+    archers.value        = archerRes.data
+    categories.value     = catRes.data
+    allInscriptions.value = Array.isArray(insRes.data) ? insRes.data : []
   } catch (e) {
     console.error('[AdminTournaments] load error:', e.message)
   }
@@ -286,14 +440,42 @@ function openEdit(t) {
 }
 
 function openInscribe(t) {
-  inscribingT.value    = t
-  inscribeArcherId.value = null
-  inscribeError.value  = ''
-  inscribeSuccess.value = ''
+  inscribingT.value       = t
+  inscribeArcherId.value  = null
+  inscribeError.value     = ''
+  inscribeSuccess.value   = ''
+  categoryMismatch.value  = false
   showInscribeModal.value = true
 }
 
 function confirmDelete(t) { deletingT.value = t; showDeleteModal.value = true }
+
+// Construye la lista de inscritos de un torneo cruzando con la lista de arqueros
+function getInscribedForTournament(tournamentId) {
+  return allInscriptions.value
+    .filter(i => i.tournamentId === tournamentId)
+    .map(i => ({
+      inscriptionId: i.inscriptionId,
+      archerId:      i.archerId,
+      score:         i.score ?? 0,
+      archerName:    archers.value.find(a => a.archerId === i.archerId)?.name ?? `Arquero #${i.archerId}`,
+    }))
+}
+
+function openViewInscribed(t) {
+  viewingT.value      = t
+  viewInscribed.value = getInscribedForTournament(t.tournamentId)
+  showViewModal.value = true
+}
+
+function openUnregister(t) {
+  unregisteringT.value          = t
+  unregisterInscriptionId.value = null
+  unregisterError.value         = ''
+  unregisterSuccess.value       = ''
+  tournamentInscriptions.value  = getInscribedForTournament(t.tournamentId)
+  showUnregisterModal.value     = true
+}
 
 async function saveTournament() {
   modalError.value = ''
@@ -317,20 +499,92 @@ async function doDelete() {
   } catch { /* ignore */ } finally { saving.value = false }
 }
 
+// Estado de incompatibilidad de categoría
+const categoryMismatch         = ref(false)
+const categoryMismatchArcherName = ref('')
+const categoryMismatchArcherCat  = ref('')
+
+// Limpiar error y validar categoría al cambiar arquero seleccionado
+watch(inscribeArcherId, (newId) => {
+  inscribeError.value = ''
+  if (!newId || !inscribingT.value?.categoryId) {
+    categoryMismatch.value = false
+    return
+  }
+  const archer = archers.value.find(a => a.archerId === newId)
+  if (archer && archer.categoryId !== inscribingT.value.categoryId) {
+    categoryMismatch.value          = true
+    categoryMismatchArcherName.value = archer.name
+    categoryMismatchArcherCat.value  = archer.categoryName || `Cat. #${archer.categoryId}`
+  } else {
+    categoryMismatch.value = false
+  }
+})
+watch(unregisterInscriptionId, () => { unregisterError.value = '' })
+
+function autoDismiss(refVal, ms = 3500) {
+  setTimeout(() => { refVal.value = '' }, ms)
+}
+
+function parseInscribeError(e) {
+  const status = e.response?.status
+  const msg    = e.response?.data?.error ?? e.response?.data?.message ?? ''
+  if (status === 409 || msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('already'))
+    return 'Este arquero ya está inscrito en el torneo.'
+  if (status === 404)
+    return 'Arquero o torneo no encontrado. Recarga la página.'
+  if (status === 403)
+    return 'No tienes permiso para realizar esta acción.'
+  if (status === 400)
+    return `Datos inválidos: ${msg || 'verifica la selección.'}`
+  return msg || 'No se pudo inscribir al arquero. Intenta de nuevo.'
+}
+
+function parseUnregisterError(e) {
+  const status = e.response?.status
+  const msg    = e.response?.data?.error ?? e.response?.data?.message ?? ''
+  if (status === 404)
+    return 'Inscripción no encontrada. Es posible que ya fue eliminada.'
+  if (status === 403)
+    return 'No tienes permiso para realizar esta acción.'
+  if (status === 400)
+    return `Solicitud inválida: ${msg || 'verifica la selección.'}`
+  return msg || 'No se pudo desinscribir al arquero. Intenta de nuevo.'
+}
+
 async function doInscribe() {
   inscribeError.value   = ''
   inscribeSuccess.value = ''
   saving.value = true
   try {
-    await api.post('/inscriptions', {
+    const res = await api.post('/inscriptions', {
       archerId:     inscribeArcherId.value,
       tournamentId: inscribingT.value.tournamentId,
     })
-    const archerName = archers.value.find(a => a.archerId === inscribeArcherId.value)?.name || ''
-    inscribeSuccess.value = `${archerName} inscrito en ${inscribingT.value.name} exitosamente.`
+    if (res.data) allInscriptions.value.push(res.data)
+    const archerName = archers.value.find(a => a.archerId === inscribeArcherId.value)?.name || 'Arquero'
+    inscribeSuccess.value = `${archerName} fue inscrito correctamente en "${inscribingT.value.name}".`
     inscribeArcherId.value = null
+    autoDismiss(inscribeSuccess)
   } catch (e) {
-    inscribeError.value = e.response?.data?.error || 'No se pudo inscribir al arquero. ¿Ya estaba inscrito?'
+    inscribeError.value = parseInscribeError(e)
+  } finally { saving.value = false }
+}
+
+async function doUnregister() {
+  unregisterError.value   = ''
+  unregisterSuccess.value = ''
+  saving.value = true
+  try {
+    await deleteInscription(unregisterInscriptionId.value)
+    allInscriptions.value = allInscriptions.value.filter(i => i.inscriptionId !== unregisterInscriptionId.value)
+    const removed = tournamentInscriptions.value.find(i => i.inscriptionId === unregisterInscriptionId.value)
+    tournamentInscriptions.value = tournamentInscriptions.value.filter(i => i.inscriptionId !== unregisterInscriptionId.value)
+    unregisterSuccess.value = `${removed?.archerName ?? 'Arquero'} fue desinscrito correctamente de "${unregisteringT.value.name}".`
+    unregisterInscriptionId.value = null
+    autoDismiss(unregisterSuccess)
+  } catch (e) {
+    unregisterError.value = parseUnregisterError(e)
   } finally { saving.value = false }
 }
 
@@ -372,5 +626,67 @@ onMounted(load)
   background: rgba(10,200,185,0.12); border: 1px solid rgba(10,200,185,0.3);
   color: #0ac8b9; border-radius: 6px; padding: 0.6rem 0.9rem;
   font-size: 0.82rem; margin-bottom: 1rem;
+}
+
+/* ── Lista de inscritos ────────────────────────────────── */
+.inscribed-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.inscribed-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--lol-border);
+  transition: border-color 0.2s;
+}
+.inscribed-item:hover { border-color: rgba(200,155,60,0.3); }
+.inscribed-name {
+  flex: 1;
+  font-family: 'Cinzel', serif;
+  font-size: 0.82rem;
+  color: var(--text-primary);
+}
+
+/* ── Alert mejorada (con título + mensaje) ────────────────── */
+.alert {
+  align-items: flex-start;
+}
+.alert-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
+.alert-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+}
+.alert-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.alert-msg {
+  font-size: 0.82rem;
+  line-height: 1.4;
+  opacity: 0.9;
+}
+
+/* ── Alert warning (categoría incompatible) ──────────────── */
+.alert-warning {
+  background: rgba(255, 180, 0, 0.08);
+  border: 1px solid rgba(255, 180, 0, 0.35);
+  color: #ffd54f;
 }
 </style>

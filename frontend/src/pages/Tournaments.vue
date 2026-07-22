@@ -232,14 +232,17 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { getTournaments } from '@/api/tournaments'
+import { getInscriptions, deleteInscription } from '@/api/inscriptions'
 import api from '@/api/axios'
 
-const tournaments       = ref([])
-const loading           = ref(true)
-const activeFilter      = ref('all')
+const tournaments        = ref([])
+const loading            = ref(true)
+const activeFilter       = ref('all')
 const selectedTournament = ref(null)   // works for both active & past
-const podium            = ref([])
-const podiumLoading     = ref(false)
+const podium             = ref([])
+const podiumLoading      = ref(false)
+const myInscriptions     = ref([])     // inscripciones del arquero actual
+const unregisteringId    = ref(null)   // tournamentId en proceso de desinscripción
 
 const filters = [
   { value: 'all',      label: 'Todos' },
@@ -317,10 +320,34 @@ async function refreshPodium() {
   await loadPodium(selectedTournament.value.tournamentId)
 }
 
+// Devuelve la inscripción del arquero para un torneo dado, o null si no está inscrito
+function getMyInscription(tournamentId) {
+  return myInscriptions.value.find(i => i.tournamentId === tournamentId) ?? null
+}
+
+async function handleUnregister(tournamentId) {
+  const inscription = getMyInscription(tournamentId)
+  if (!inscription) return
+  unregisteringId.value = tournamentId
+  try {
+    await deleteInscription(inscription.inscriptionId)
+    // Quitar la inscripción de la lista local sin recargar toda la página
+    myInscriptions.value = myInscriptions.value.filter(i => i.tournamentId !== tournamentId)
+  } catch (err) {
+    console.error('Error al desinscribir:', err)
+  } finally {
+    unregisteringId.value = null
+  }
+}
+
 onMounted(async () => {
   try {
-    const res = await getTournaments()
-    tournaments.value = Array.isArray(res.data) ? res.data : []
+    const [tourRes, insRes] = await Promise.all([
+      getTournaments(),
+      getInscriptions(),
+    ])
+    tournaments.value    = Array.isArray(tourRes.data) ? tourRes.data : []
+    myInscriptions.value = Array.isArray(insRes.data)  ? insRes.data  : []
   } catch { /* ignore */ } finally { loading.value = false }
 })
 </script>
@@ -428,7 +455,34 @@ onMounted(async () => {
 .t-date-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
 .t-sep { color: var(--lol-gold-dark); }
 .t-divider { height: 1px; background: linear-gradient(90deg, var(--lol-gold-dark), transparent); opacity: 0.5; }
-.t-footer { display: flex; gap: 0.5rem; align-items: center; }
+.t-footer { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+
+/* ── Botón Desinscribir ─────────────────────────────────── */
+.btn-unregister {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+  padding: 0.25rem 0.6rem;
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #e84057;
+  background: rgba(232,64,87,0.08);
+  border: 1px solid rgba(232,64,87,0.3);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, opacity 0.2s;
+}
+.btn-unregister:hover:not(:disabled) {
+  background: rgba(232,64,87,0.18);
+  border-color: rgba(232,64,87,0.6);
+}
+.btn-unregister:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .t-upcoming-note {
   font-family: 'Cinzel', serif; font-size: 0.62rem;
