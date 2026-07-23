@@ -120,6 +120,12 @@ Todos los usuarios comparten la misma contraseña: **`admin123`**
 
 ---
 
+## 🛰️ Componente Espacial (Entrega 2 — PostGIS)
+
+Logueado como admin, en el menú de usuario hay una sección **"Componente Espacial"** (`/admin/spatial`) donde se gestiona todo lo geoespacial de un torneo: campo oficial, zona de competencia, blancos, registro de posición GPS del arquero y análisis de correlación ambiental vs. precisión. Requiere PostGIS, que ya viene incluido y se inicializa solo al levantar los contenedores.
+
+---
+
 ## 🛠️ Comandos Útiles
 
 ```bash
