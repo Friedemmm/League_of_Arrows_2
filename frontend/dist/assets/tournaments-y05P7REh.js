@@ -1,0 +1,1 @@
+import{t as e}from"./axios-CzYGWDtk.js";var t=()=>e.get(`/tournaments`),n=t=>e.post(`/tournaments`,t),r=(t,n)=>e.put(`/tournaments/${t}`,n),i=t=>e.delete(`/tournaments/${t}`),a=t=>e.get(`/tournaments/${t}/podium`);export{r as a,t as i,i as n,a as r,n as t};

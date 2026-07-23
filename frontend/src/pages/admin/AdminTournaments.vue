@@ -286,55 +286,11 @@
               </button>
             </div>
             <div class="modal-body">
-              <!-- ── Campo de tiro oficial ── -->
-              <h4 class="text-gold" style="margin-bottom:0.5rem;">
-                <span class="material-icons" style="vertical-align:middle;font-size:1.1rem;">fence</span>
-                Campo de tiro oficial
-              </h4>
+              <!-- ── Campo de competencia ── -->
               <p class="text-muted" style="font-size:0.78rem;margin-bottom:0.8rem;">
-                Necesario para que la geocerca valide las posiciones registradas. Un torneo tiene un solo campo;
-                volver a guardar reemplaza el polígono existente.
+                Define el polígono del campo de competencia. Haz click en el mapa para agregar vértices.
+                El backend valida que los arqueros estén dentro (ST_Contains) al registrar puntajes.
               </p>
-              <Transition name="slide-up">
-                <div class="alert alert-error" v-if="fieldError" role="alert">
-                  <span class="material-icons alert-icon">error</span>
-                  <div class="alert-body"><span class="alert-msg">{{ fieldError }}</span></div>
-                </div>
-              </Transition>
-              <Transition name="slide-up">
-                <div class="alert alert-success" v-if="fieldSuccess" role="status">
-                  <span class="material-icons alert-icon">check_circle</span>
-                  <div class="alert-body"><span class="alert-msg">{{ fieldSuccess }}</span></div>
-                </div>
-              </Transition>
-              <p v-if="existingField" class="text-secondary" style="font-size:0.8rem;margin-bottom:0.5rem;">
-                Campo actual: <strong class="text-gold">{{ existingField.properties.name }}</strong>
-              </p>
-              <div class="form-group">
-                <label class="form-label" for="field-name">Nombre del campo</label>
-                <input id="field-name" class="form-input" v-model="fieldName" placeholder="Ej. Campo Nacional de Tiro con Arco" />
-              </div>
-              <CompetitionZoneMap
-                :tournament-id="zoningT?.tournamentId"
-                map-id="field-draw-map"
-                load-endpoint="/fields"
-                draw-color="#5b8dd6"
-                @polygon-changed="onFieldPolygonChanged" />
-              <div style="text-align:right;margin:0.5rem 0 1.5rem;">
-                <button class="btn btn-gold btn-sm" id="btn-save-field" @click="saveField"
-                  :disabled="savingField || !fieldName.trim() || !fieldGeometry">
-                  <span class="material-icons btn-icon" style="font-size:0.9rem;">save</span>
-                  {{ savingField ? 'Guardando...' : 'Guardar campo' }}
-                </button>
-              </div>
-
-              <hr class="page-rule" />
-
-              <!-- ── Zona de competencia ── -->
-              <h4 class="text-gold" style="margin-bottom:0.5rem;">
-                <span class="material-icons" style="vertical-align:middle;font-size:1.1rem;">crop_free</span>
-                Zona de competencia
-              </h4>
               <Transition name="slide-up">
                 <div class="alert alert-error" v-if="zoneError" role="alert">
                   <span class="material-icons alert-icon">error</span>
@@ -354,15 +310,16 @@
                 </div>
               </Transition>
 
+              <!-- Zonas existentes -->
               <div v-if="existingZones.length > 0" style="margin-bottom:1rem;">
-                <label class="form-label">Zonas ya definidas</label>
+                <label class="form-label">Campo ya definido</label>
                 <ul class="inscribed-list">
                   <li v-for="z in existingZones" :key="z.properties.id_zone" class="inscribed-item">
-                    <span class="material-icons" style="font-size:1rem;color:#5b8dd6;flex-shrink:0;">layers</span>
+                    <span class="material-icons" style="font-size:1rem;color:var(--lol-gold);flex-shrink:0;">pentagon</span>
                     <span class="inscribed-name">{{ z.properties.name }}</span>
                     <button class="btn btn-danger btn-sm icon-btn" style="margin-left:auto;"
                       :id="`btn-delete-zone-${z.properties.id_zone}`"
-                      @click="deleteZone(z.properties.id_zone)" title="Eliminar zona">
+                      @click="deleteZone(z.properties.id_zone)" title="Eliminar campo">
                       <span class="material-icons" style="font-size:0.9rem;">delete</span>
                     </button>
                   </li>
@@ -370,8 +327,8 @@
               </div>
 
               <div class="form-group">
-                <label class="form-label" for="zone-name">Nombre de la nueva zona</label>
-                <input id="zone-name" class="form-input" v-model="zoneName" placeholder="Ej. Línea de tiro A" />
+                <label class="form-label" for="zone-name">Nombre del campo</label>
+                <input id="zone-name" class="form-input" v-model="zoneName" placeholder="Ej. Campo de tiro — Sede Norte" />
               </div>
 
               <CompetitionZoneMap
@@ -504,12 +461,7 @@ const existingZones        = ref([])
 const zoneError            = ref('')
 const zoneSuccess          = ref('')
 const savingZone           = ref(false)
-const fieldName            = ref('')
-const fieldGeometry        = ref(null)
-const existingField        = ref(null)
-const fieldError           = ref('')
-const fieldSuccess         = ref('')
-const savingField          = ref(false)
+
 const inscribeArcherId        = ref(null)
 const unregisterInscriptionId = ref(null)
 const allInscriptions         = ref([])   // todas las inscripciones cargadas al montar
@@ -627,11 +579,7 @@ async function openZoneModal(t) {
   zoneError.value     = ''
   zoneSuccess.value   = ''
   existingZones.value = []
-  fieldName.value      = ''
-  fieldGeometry.value  = null
-  fieldError.value     = ''
-  fieldSuccess.value   = ''
-  existingField.value  = null
+
   showZoneModal.value = true
   try {
     const res = await api.get(`/competition-zones/tournament/${t.tournamentId}`)
@@ -639,38 +587,14 @@ async function openZoneModal(t) {
   } catch (e) {
     console.error('[AdminTournaments] error cargando zonas:', e.message)
   }
-  try {
-    const res = await api.get(`/fields/tournament/${t.tournamentId}`)
-    existingField.value = (res.data.features || [])[0] || null
-  } catch (e) {
-    console.error('[AdminTournaments] error cargando campo:', e.message)
-  }
+
 }
 
 function onPolygonChanged(geometry) {
   zoneGeometry.value = geometry
 }
 
-function onFieldPolygonChanged(geometry) {
-  fieldGeometry.value = geometry
-}
 
-async function saveField() {
-  fieldError.value = fieldSuccess.value = ''
-  savingField.value = true
-  try {
-    await api.post('/fields', {
-      idTournament: zoningT.value.tournamentId,
-      name: fieldName.value.trim(),
-      geometry: fieldGeometry.value,
-    })
-    fieldSuccess.value = 'Campo guardado correctamente.'
-    const res = await api.get(`/fields/tournament/${zoningT.value.tournamentId}`)
-    existingField.value = (res.data.features || [])[0] || null
-  } catch (e) {
-    fieldError.value = e.response?.data?.error || 'Error al guardar el campo.'
-  } finally { savingField.value = false }
-}
 
 async function saveZone() {
   zoneError.value = zoneSuccess.value = ''

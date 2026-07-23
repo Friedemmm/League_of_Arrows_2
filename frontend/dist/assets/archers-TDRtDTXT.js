@@ -1,0 +1,1 @@
+import{t as e}from"./axios-CzYGWDtk.js";var t=()=>e.get(`/archers`),n=t=>e.post(`/archers`,t),r=(t,n)=>e.put(`/archers/${t}`,n),i=t=>e.delete(`/archers/${t}`),a=()=>e.get(`/archers/me/history`),o=()=>e.get(`/archers/top-month`),s=()=>e.get(`/archers/leaderboard`);export{a,s as i,i as n,o,t as r,r as s,n as t};

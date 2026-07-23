@@ -146,9 +146,10 @@ BEGIN
         RAISE EXCEPTION 'El torneo % no está activo: el puntaje no es válido.', NEW.id_tournament;
     END IF;
 
-    IF v_boundary IS NULL THEN
-        RAISE EXCEPTION 'El torneo % no tiene un campo de tiro oficial asociado.', NEW.id_tournament;
-    END IF;
+    -- Si el torneo no tiene campo oficial asociado en la tabla fields,
+    -- omitir esta validación (fn_validar_zona_competencia ya valida
+    -- que el arquero esté dentro de la competition_zone dibujada por el admin)
+    IF v_boundary IS NULL THEN RETURN NEW; END IF;
 
     IF NOT ST_Contains(v_boundary, NEW.archer_location) THEN
         RAISE EXCEPTION 'Puntaje inválido: el arquero % está fuera del campo de tiro oficial.', NEW.id_archer;

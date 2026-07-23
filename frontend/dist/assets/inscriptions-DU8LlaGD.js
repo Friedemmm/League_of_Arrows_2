@@ -1,0 +1,1 @@
+import{t as e}from"./axios-CzYGWDtk.js";var t=()=>e.get(`/inscriptions`),n=t=>e.delete(`/inscriptions/${t}`);export{t as n,n as t};

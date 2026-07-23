@@ -96,12 +96,7 @@ const routes = [
     component: () => import('../pages/admin/AdminAudit.vue'),
     meta: { requiresAdmin: true },
   },
-  {
-    path: '/admin/spatial',
-    name: 'AdminSpatial',
-    component: () => import('../pages/admin/AdminSpatial.vue'),
-    meta: { requiresAdmin: true },
-  },
+
 
   // Catch-all
   { path: '/:pathMatch(.*)*', redirect: '/' },
